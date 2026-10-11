@@ -1,0 +1,5 @@
+show gauge for 3000 ms
+supply on
+t=1003 supply=on 000000 0c0800 201500 
+t=4002 supply=on 000000 000000 000000 
+supply off

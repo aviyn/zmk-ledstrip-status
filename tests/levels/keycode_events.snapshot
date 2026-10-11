@@ -1,0 +1,49 @@
+show gauge for 3000 ms
+supply on
+t=1003 supply=on 002000 002000 002000 
+t=4002 supply=on 000000 000000 000000 
+supply off
+t=4503 battery 70 %
+show gauge for 3000 ms
+supply on
+t=6007 supply=on 002000 002000 000c00 
+t=9006 supply=on 000000 000000 000000 
+supply off
+t=9507 battery 45 %
+show gauge for 3000 ms
+supply on
+t=11011 supply=on 201500 0c0800 000000 
+t=14010 supply=on 000000 000000 000000 
+supply off
+t=14511 battery 25 %
+show gauge for 3000 ms
+supply on
+t=16015 supply=on 200800 000000 000000 
+t=19014 supply=on 000000 000000 000000 
+supply off
+t=19515 battery 12 %
+show gauge for 3000 ms
+supply on
+t=21019 supply=on 0c0000 000000 000000 
+t=21306 supply=on 000000 000000 000000 
+t=21552 supply=on 0c0000 000000 000000 
+t=21798 supply=on 000000 000000 000000 
+t=22044 supply=on 0c0000 000000 000000 
+t=22290 supply=on 000000 000000 000000 
+t=22536 supply=on 0c0000 000000 000000 
+t=22782 supply=on 000000 000000 000000 
+t=23028 supply=on 0c0000 000000 000000 
+t=23274 supply=on 000000 000000 000000 
+t=23520 supply=on 0c0000 000000 000000 
+t=23807 supply=on 000000 000000 000000 
+supply off
+t=24519 battery 5 %
+show critical for 1500 ms
+supply on
+t=25003 supply=on 0c0000 000000 000000 
+t=25290 supply=on 000000 000000 000000 
+t=25536 supply=on 0c0000 000000 000000 
+t=25782 supply=on 000000 000000 000000 
+t=26028 supply=on 0c0000 000000 000000 
+t=26274 supply=on 000000 000000 000000 
+supply off

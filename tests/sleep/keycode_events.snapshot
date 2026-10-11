@@ -1,0 +1,16 @@
+show gauge for 3000 ms
+supply on
+t=1003 supply=on 002000 002000 002000 
+t=4002 supply=on 000000 000000 000000 
+supply off
+show gauge for 3000 ms
+supply on
+t=4505 supply=on 002000 002000 002000 
+t=5505 sleep
+sleep: supply off
+t=7509 wake
+show gauge for 3000 ms
+supply on
+t=8013 supply=on 002000 002000 002000 
+t=11012 supply=on 000000 000000 000000 
+supply off

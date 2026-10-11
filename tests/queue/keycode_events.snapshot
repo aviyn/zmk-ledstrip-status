@@ -1,0 +1,15 @@
+show gauge for 3000 ms
+supply on
+t=1003 supply=on 002000 002000 002000 
+t=4002 supply=on 000000 000000 000000 
+supply off
+show gauge for 3000 ms
+supply on
+t=4505 supply=on 002000 002000 002000 
+restart gauge for 3000 ms
+t=6607 vbus 1
+t=9515 supply=on 000000 000000 000000 
+show charged for 3000 ms
+t=9666 supply=on 002000 002000 002000 
+t=12667 supply=on 000000 000000 000000 
+supply off

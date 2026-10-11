@@ -110,4 +110,22 @@ All options are in [`Kconfig`](Kconfig). The main ones:
 | `CONFIG_LEDSTRIP_STATUS_LEVEL_CRITICAL` | 10 | 0 disables the warning |
 | `CONFIG_LEDSTRIP_STATUS_CHARGING_SHOW_MS` | 5000 | |
 
+## Tests
+
+[`tests/`](tests) runs the module on ZMK's `native_sim` test board in GitHub Actions ([`.github/workflows/test.yml`](.github/workflows/test.yml)). It uses ZMK's own `run-test.sh` and its mock key matrix.
+
+- **Test doubles** in [`src/test/`](src/test/test_support.c), built only with `CONFIG_LEDSTRIP_STATUS_TEST`:
+  - a fake LED strip that logs every changed frame, with a timestamp and whether the supply switch is on
+  - a fuel gauge whose level the test sets
+  - a test behavior, `&lst`, whose keys set the battery level, VBUS and the charger input on emulated GPIOs, or send sleep and wake
+- **Cases:**
+  - `boot`, `boot-order`: the boot gauge, plus the reversed `led-order`
+  - `levels`: every gauge step, the red blink, and the critical warning
+  - `charging`: settle, breathing, the key while charging, completion, unplugging, and plugging in with a full battery
+  - `sleep`: the supply is cut at once, and requests while asleep are ignored
+  - `queue`: restart on a repeat press, then the next display after a dark gap
+- **Snapshots:** each case compares its log with `keycode_events.snapshot`. After an intended change, run the workflow manually with **accept** ticked, review the new snapshots in the `test-logs` artifact, and commit them.
+
+Not covered: the BLE profile view and the split link, because `native_sim` has no BLE; real LED timing; and current draw.
+
 Targets ZMK `main` (Zephyr 4.1).
