@@ -128,6 +128,8 @@ static int lst_pressed(struct zmk_behavior_binding *binding,
         LOG_DBG("t=%lld %s", k_uptime_get(), binding->param1 == LST_SLEEP ? "sleep" : "wake");
         raise_zmk_activity_state_changed((struct zmk_activity_state_changed){
             .state = binding->param1 == LST_SLEEP ? ZMK_ACTIVITY_SLEEP : ZMK_ACTIVITY_ACTIVE});
+        // sleep cuts the supply without a blank frame: log the next frame even if it repeats
+        last_frame[0] = '\0';
         break;
     }
     return ZMK_BEHAVIOR_OPAQUE;
