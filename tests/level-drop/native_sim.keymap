@@ -2,24 +2,22 @@
 
 /*
  * SHOW_ON_LEVEL_DROP: on battery, the gauge shows each time it reaches a new
- * lowest step. 100 -> 70 % drops a step (shown), 75 % stays on that step,
- * 60 % drops another (shown), 70 % goes back up and 65 % returns to the
- * lowest step seen (neither shown). On USB nothing shows, and the lowest
- * step starts over: after unplugging, 60 % is a drop again.
+ * lowest step. 100 -> 70 % drops a step (shown),
+ * 45 % drops two more (shown once), 70 % goes back up and 45 % returns to
+ * the lowest step seen (neither shown). On USB nothing shows, and the lowest
+ * step follows the level: charged to 100 % and unplugged, 70 % is a drop.
  */
 &kscan {
     events = <
         TAP(NOP, 4480)
         TAP(BAT_70, 3990)        /* 4.5 s: shown */
-        TAP(BAT_100, 10)
-        TAP(BAT_70, 1990)        /* (100 is not sampled in 10 ms) */
         TAP(BAT_45, 3990)        /* 8.5 s: 45 % = step 3, shown */
         TAP(BAT_70, 1990)        /* 12.5 s: up, not shown */
-        TAP(BAT_45, 1990)        /* 14.5 s: back to lowest, not shown */
-        TAP(VBUS_ON, 1990)       /* 16.5 s */
-        TAP(BAT_100, 1990)       /* 18.5 s: on USB, not shown */
-        TAP(VBUS_OFF, 1990)      /* 20.5 s: plugged into a full battery: charged */
-        TAP(BAT_70, 3990)        /* 22.5 s: a drop again, shown */
+        TAP(BAT_45, 1990)        /* 14.5 s: back to the lowest step, not shown */
+        TAP(VBUS_ON, 1990)       /* 16.5 s: full battery, so "charged" */
+        TAP(BAT_100, 3990)       /* 18.5 s: on USB, not shown */
+        TAP(VBUS_OFF, 1990)      /* 22.5 s */
+        TAP(BAT_70, 3990)        /* 24.5 s: a drop from 100 %, shown */
         TAP(NOP, 10)
     >;
 };

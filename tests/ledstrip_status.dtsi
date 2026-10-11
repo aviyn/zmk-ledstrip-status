@@ -52,7 +52,7 @@
                 &lst LST_CHARGE 1    &lst LST_CHARGE 0     &lst LST_SLEEP 0     &lst LST_WAKE 0
                 &led_status_bat      &led_status_con       &none                &none
                 &caps_word           &kp A                 &kp SPACE            &mo 1
-                &lst LST_CAPS_LOCK 1 &lst LST_CAPS_LOCK 0  &lst LST_IDLE 0      &none
+                &lst LST_CAPS_LOCK 1 &lst LST_CAPS_LOCK 0  &none                &none
             >;
         };
 
@@ -96,7 +96,6 @@
 #define LAYER_1 4, 3
 #define CAPS_ON 5, 0
 #define CAPS_OFF 5, 1
-#define IDLE 5, 2
 
 /* hold a key for `ms` (+10 ms), e.g. a momentary layer */
 #define HOLD(key, ms) ZMK_MOCK_PRESS(key, ms) ZMK_MOCK_RELEASE(key, 10)

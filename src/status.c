@@ -498,6 +498,7 @@ static void status_thread(void *p1, void *p2, void *p3) {
         if (k_msgq_get(&request_q, &req, wait) < 0) {
             continue;
         }
+        bool ran = false;
         do {
             if (req.display == DISPLAY_REFRESH) {
                 atomic_clear(&refresh_pending);
@@ -505,9 +506,12 @@ static void status_thread(void *p1, void *p2, void *p3) {
             }
             gap();
             status_run(req);
+            ran = true;
         } while (k_msgq_get(&request_q, &req, K_NO_WAIT) == 0);
 
-        if (render_background(k_uptime_get(), &animated)) {
+        // back to the background after a timed display; a background change
+        // alone (layer, caps) switches without a gap
+        if (ran && render_background(k_uptime_get(), &animated)) {
             gap();
         }
     }
@@ -624,7 +628,7 @@ static bool level_dropped(uint8_t level) {
     uint8_t step = gauge_steps(level);
 
     if (usb_powered()) {
-        lowest_step = NO_STEP; // charging: start over once unplugged
+        lowest_step = step; // charging: start over from the level at unplugging
         return false;
     }
     if (lowest_step == NO_STEP || step >= lowest_step) {

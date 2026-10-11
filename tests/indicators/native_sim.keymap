@@ -3,9 +3,10 @@
 /*
  * Persistent indicators: layer 1 shows blue on the outer LED while held.
  * Caps lock shows white on the inner LED; caps word shows magenta there,
- * over caps lock, until a non-word key (space) ends it. A timed display
- * hides the indicators and they come back after it. While idle on battery
- * they are hidden, and any key brings them back.
+ * over caps lock, until a non-word key (space) ends it. Indicators switch
+ * without a dark gap. A timed display hides them and they come back after
+ * it. ZMK goes idle 5 s after the last key: on battery the indicators hide,
+ * and the next key brings them back.
  */
 &status_leds {
     layer-colors = <0 0x0000ff>;
@@ -20,10 +21,9 @@
         TAP(CAPS_WORD, 490)      /* 7.0 s: caps word over caps lock */
         TAP(KEY_A, 490)          /* 7.5 s: a letter keeps caps word */
         TAP(KEY_SPACE, 990)      /* 8.0 s: space ends caps word */
-        TAP(SHOW_BAT, 3990)      /* 9.0 s: gauge 3 s, then caps lock again */
-        TAP(IDLE, 990)           /* 13.0 s: idle, caps lock hidden */
-        TAP(KEY_A, 990)          /* 14.0 s: a key: active again */
-        TAP(CAPS_OFF, 990)       /* 15.0 s: caps lock off, supply off */
+        TAP(SHOW_BAT, 7490)      /* 9.0 s: gauge 3 s, then caps lock; idle at about 14 s */
+        TAP(KEY_A, 990)          /* 16.5 s: active again, caps lock back */
+        TAP(CAPS_OFF, 990)       /* 17.5 s: caps lock off, supply off */
         TAP(NOP, 10)
     >;
 };
