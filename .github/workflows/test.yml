@@ -43,9 +43,11 @@ jobs:
       - name: Run tests
         working-directory: zmk/app
         env:
-          ZMK_EXTRA_MODULES: ${{ github.workspace }}/zmk-ledstrip-status
           ZMK_TESTS_AUTO_ACCEPT: ${{ inputs.accept && '1' || '' }}
-        run: ./run-test.sh ${{ github.workspace }}/zmk-ledstrip-status/tests
+        # $GITHUB_WORKSPACE, not github.workspace: the latter is the host path
+        run: |
+          export ZMK_EXTRA_MODULES="$GITHUB_WORKSPACE/zmk-ledstrip-status"
+          ./run-test.sh "$GITHUB_WORKSPACE/zmk-ledstrip-status/tests"
       - name: Archive logs and snapshots
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
