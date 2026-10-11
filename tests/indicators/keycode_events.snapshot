@@ -24,3 +24,7 @@ t=16519 supply=on 000000 000000 202020
 t=17519 caps lock 0
 t=17519 supply=on 000000 000000 000000 
 supply off
+supply on
+t=18523 supply=on 000020 000000 000000 
+t=19522 supply=on 000000 000000 000000 
+supply off

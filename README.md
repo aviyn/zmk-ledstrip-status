@@ -23,7 +23,7 @@ These stay lit while no timed display runs, and come back after one ends:
 
 | Indicator | LED | |
 |---|---|---|
-| Layer | `layer-led` (default 0) | The highest active layer's color from `layer-colors`. A 0 entry shows nothing. Central only. |
+| Layer | `layer-led` (default 0) | The highest active layer's color from `layer-colors`. A 0 entry shows nothing. A held layer (`&mo`, `&lt`, conditional) shows while held. A toggled one (`&tog`, `&to`) only flashes for `LAYER_FLASH_MS` (1 s). Central only. |
 | Caps word | `caps-led` (default: last LED) | `caps-word-color`, default magenta. Central only. |
 | Caps lock | `caps-led` | `caps-lock-color`, default white. Shown on every half, through ZMK's split HID-indicator relay. |
 | Charging (`CHARGING_ALWAYS`) | all | The charging animation for as long as the battery charges. Layer and caps indicators show on top. |
@@ -129,6 +129,7 @@ All options are in [`Kconfig`](Kconfig). The main ones:
 | `CONFIG_LEDSTRIP_STATUS_CHARGING_ALWAYS` | n | animate for as long as charging lasts |
 | `CONFIG_LEDSTRIP_STATUS_SHOW_ON_LEVEL_DROP` | n | gauge on each new lowest step |
 | `CONFIG_LEDSTRIP_STATUS_SHOW_LAYER` / `_CAPS_LOCK` / `_CAPS_WORD` | y | persistent indicators |
+| `CONFIG_LEDSTRIP_STATUS_LAYER_FLASH_MS` | 1000 | toggled layers; 0 = lit for as long as on |
 | `CONFIG_LEDSTRIP_STATUS_INDICATOR_PERCENT` | 100 | indicator brightness |
 | `CONFIG_LEDSTRIP_STATUS_INDICATORS_IDLE_OFF` | y | |
 
