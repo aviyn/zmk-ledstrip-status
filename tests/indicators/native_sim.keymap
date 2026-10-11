@@ -6,7 +6,8 @@
  * over caps lock, until a non-word key (space) ends it. Indicators switch
  * without a dark gap. A timed display hides them and they come back after
  * it. ZMK goes idle 5 s after the last key: on battery the indicators hide,
- * and the next key brings them back.
+ * and the next key brings them back. A toggled layer only flashes its
+ * color for 1 s, though it stays on; toggling it off shows nothing.
  */
 &status_leds {
     layer-colors = <0 0x0000ff>;
@@ -24,6 +25,8 @@
         TAP(SHOW_BAT, 7490)      /* 9.0 s: gauge 3 s, then caps lock; idle at about 14 s */
         TAP(KEY_A, 990)          /* 16.5 s: active again, caps lock back */
         TAP(CAPS_OFF, 990)       /* 17.5 s: caps lock off, supply off */
+        TAP(TOGGLE_1, 1990)      /* 18.5 s: layer 1 on: blue until 19.5 s */
+        TAP(TOGGLE_1, 990)       /* 20.5 s: layer 1 off: nothing */
         TAP(NOP, 10)
     >;
 };

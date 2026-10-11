@@ -76,6 +76,14 @@ config LEDSTRIP_STATUS_SHOW_LAYER
     bool "Show the highest active layer's color (layer-colors) on one LED"
     default y
 
+config LEDSTRIP_STATUS_LAYER_FLASH_MS
+    int "How long a toggled (locked) layer's color shows, 0 = for as long as it is on"
+    default 1000
+    help
+      Momentary layers (&mo, &lt, conditional layers) show while their key is
+      held. Toggled layers (&tog, &to) lock the layer on; their color only
+      flashes for this long when switched on, to save power.
+
 config LEDSTRIP_STATUS_SHOW_CAPS_LOCK
     bool "Show caps lock on one LED"
     default y

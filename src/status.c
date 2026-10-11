@@ -158,6 +158,7 @@ static bool initialized;
 // background state, written by the event side and read by the display thread
 static bool idle;
 static bool bg_charging;
+static int64_t layer_flash_until;
 static zmk_hid_indicators_t hid_indicators;
 static atomic_t refresh_pending;
 
@@ -363,8 +364,11 @@ static bool render_background(int64_t t, bool *animated) {
         return any;
     }
 #if SHOW_LAYER
+    // a held layer shows while held, a toggled (locked) one only flashes
     uint8_t layer = zmk_keymap_highest_layer_active();
-    if (layer < ARRAY_SIZE(layer_colors) && layer_colors[layer] != 0) {
+    bool layer_shown = !zmk_keymap_layer_locked(layer) || CONFIG_LEDSTRIP_STATUS_LAYER_FLASH_MS == 0 ||
+                       k_uptime_get() < layer_flash_until;
+    if (layer_shown && layer < ARRAY_SIZE(layer_colors) && layer_colors[layer] != 0) {
         set_led(LAYER_LED, hex_color(layer_colors[layer]), INDICATOR);
         any = true;
     }
@@ -618,6 +622,22 @@ static void caps_word_work_cb(struct k_work *work) {
 static K_WORK_DELAYABLE_DEFINE(caps_word_work, caps_word_work_cb);
 #endif
 
+/* ----- toggled layers flash once ----- */
+
+#if SHOW_LAYER
+static void layer_flash_work_cb(struct k_work *work) { refresh(); }
+
+static K_WORK_DELAYABLE_DEFINE(layer_flash_work, layer_flash_work_cb);
+
+static void layer_changed(const struct zmk_layer_state_changed *ev) {
+    if (ev->state && ev->locked && ev->layer == zmk_keymap_highest_layer_active()) {
+        layer_flash_until = k_uptime_get() + CONFIG_LEDSTRIP_STATUS_LAYER_FLASH_MS;
+        k_work_reschedule(&layer_flash_work, K_MSEC(CONFIG_LEDSTRIP_STATUS_LAYER_FLASH_MS));
+    }
+    refresh();
+}
+#endif
+
 /* ----- battery level drops ----- */
 
 #define NO_STEP 0xff
@@ -733,8 +753,9 @@ static int ledstrip_status_listener(const zmk_event_t *eh) {
     }
 #endif
 #if SHOW_LAYER
-    if (as_zmk_layer_state_changed(eh)) {
-        refresh();
+    const struct zmk_layer_state_changed *layer_ev = as_zmk_layer_state_changed(eh);
+    if (layer_ev) {
+        layer_changed(layer_ev);
         return ZMK_EV_EVENT_BUBBLE;
     }
 #endif
