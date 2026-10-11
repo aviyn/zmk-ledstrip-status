@@ -80,13 +80,13 @@ struct color {
     uint8_t r, g, b;
 };
 
-static const struct color RED = {255, 0, 0};
-static const struct color AMBER = {255, 70, 0};
-static const struct color YELLOW = {255, 170, 0};
-static const struct color GREEN = {0, 255, 0};
-static const struct color BLUE = {0, 0, 255};
-static const struct color CYAN = {0, 200, 255};
-static const struct color WHITE = {255, 255, 255};
+static const struct color RED __maybe_unused = {255, 0, 0};
+static const struct color AMBER __maybe_unused = {255, 70, 0};
+static const struct color YELLOW __maybe_unused = {255, 170, 0};
+static const struct color GREEN __maybe_unused = {0, 255, 0};
+static const struct color BLUE __maybe_unused = {0, 0, 255};
+static const struct color CYAN __maybe_unused = {0, 200, 255};
+static const struct color WHITE __maybe_unused = {255, 255, 255};
 
 enum display {
     DISPLAY_GAUGE,    // battery gauge
