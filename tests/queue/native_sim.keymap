@@ -2,14 +2,16 @@
 
 /*
  * Pressing the battery key again while the gauge is lit restarts its 3 s
- * timeout instead of queueing a second gauge. A different request (the
- * connection view) waits its turn, after a short dark gap.
+ * timeout instead of queueing a second gauge. A different display (charged,
+ * from plugging USB into a full battery) waits its turn behind it, after a
+ * short dark gap, without the supply going off in between.
  */
 &kscan {
     events = <
-        TAP(SHOW_BAT, 4500)
-        TAP(SHOW_BAT, 2000)
-        TAP(SHOW_CON, 100)
-        TAP(NOP, 7000)
+        TAP(NOP, 4480)
+        TAP(SHOW_BAT, 1990)  /* 4.5 s */
+        TAP(SHOW_BAT, 90)    /* 6.5 s, now lit until 9.5 s */
+        TAP(VBUS_ON, 6990)   /* 6.6 s, charged queued at 7.1 s */
+        TAP(NOP, 10)
     >;
 };

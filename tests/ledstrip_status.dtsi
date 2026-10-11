@@ -78,5 +78,9 @@
 #define SHOW_CON 3, 1
 #define NOP 3, 3
 
-/* tap a key after waiting `ms` */
-#define TAP(key, ms) ZMK_MOCK_PRESS(key, ms) ZMK_MOCK_RELEASE(key, 10)
+/*
+ * Tap a key, then wait `ms` (+20 ms for the tap itself). The mock waits
+ * after each event, and also before the first one, so scripts start with
+ * TAP(NOP, ...) to place the first real tap: TAP(NOP, 4480) puts it at 4.5 s.
+ */
+#define TAP(key, ms) ZMK_MOCK_PRESS(key, 10) ZMK_MOCK_RELEASE(key, ms)

@@ -2,16 +2,18 @@
 
 /*
  * Every gauge step on request: 70 % (2.5 LEDs green), 45 % (1.5 yellow),
- * 25 % (1 amber), 12 % (half red, blinking). Then 5 %, which is below the
- * critical level, blinks on its own when the battery is next sampled.
+ * 25 % (1 amber), 12 % (half red, blinking). Each level is set 1.5 s before
+ * the request, so the 1 s battery sampling has picked it up. Then 5 %, below
+ * the critical level, blinks on its own at the next battery sample.
  */
 &kscan {
     events = <
-        TAP(BAT_70, 4500) TAP(SHOW_BAT, 1500)
-        TAP(BAT_45, 3500) TAP(SHOW_BAT, 1500)
-        TAP(BAT_25, 3500) TAP(SHOW_BAT, 1500)
-        TAP(BAT_12, 3500) TAP(SHOW_BAT, 1500)
-        TAP(BAT_5, 3500)
-        TAP(NOP, 3000)
+        TAP(NOP, 4480)
+        TAP(BAT_70, 1490)  TAP(SHOW_BAT, 3490)  /* set 4.5 s, show 6.0 s */
+        TAP(BAT_45, 1490)  TAP(SHOW_BAT, 3490)  /* set 9.5 s, show 11.0 s */
+        TAP(BAT_25, 1490)  TAP(SHOW_BAT, 3490)  /* set 14.5 s, show 16.0 s */
+        TAP(BAT_12, 1490)  TAP(SHOW_BAT, 3490)  /* set 19.6 s, show 21.1 s */
+        TAP(BAT_5, 3000)                        /* set 24.6 s */
+        TAP(NOP, 10)
     >;
 };

@@ -1,10 +1,10 @@
 #include "../ledstrip_status.dtsi"
 
 /*
- * Plug in USB and start charging: gauge with the top LED breathing for 5 s.
- * The battery key while charging shows the animation again. Charging
- * completes: solid green for 3 s. Unplug: nothing. Plug into a full battery
- * (no charging): solid green.
+ * Plug in USB and start charging 0.1 s later: after the 0.5 s settle, the
+ * gauge with its top LED breathing for 5 s. The battery key while charging
+ * shows the animation again (3 s). Charging completes: solid green for 3 s.
+ * Unplug: nothing. Plug into a full battery (no charging): solid green.
  */
 &test_battery {
     level = <45>;
@@ -12,11 +12,13 @@
 
 &kscan {
     events = <
-        TAP(VBUS_ON, 4500) TAP(CHG_ON, 100)
-        TAP(SHOW_BAT, 6000)
-        TAP(CHG_OFF, 4000)
-        TAP(VBUS_OFF, 4000)
-        TAP(VBUS_ON, 2000)
-        TAP(NOP, 4000)
+        TAP(NOP, 4480)
+        TAP(VBUS_ON, 90)     /* 4.5 s */
+        TAP(CHG_ON, 6490)    /* 4.6 s */
+        TAP(SHOW_BAT, 3990)  /* 11.1 s */
+        TAP(CHG_OFF, 3990)   /* 15.1 s */
+        TAP(VBUS_OFF, 1990)  /* 19.1 s */
+        TAP(VBUS_ON, 3990)   /* 21.2 s */
+        TAP(NOP, 10)
     >;
 };

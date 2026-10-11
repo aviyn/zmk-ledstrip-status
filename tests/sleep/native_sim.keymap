@@ -2,15 +2,16 @@
 
 /*
  * Sleep while the gauge is lit: the supply is cut at once and no frame
- * follows. Requests while asleep are ignored; after waking they work again.
+ * follows. A request while asleep is ignored; after waking it works again.
  */
 &kscan {
     events = <
-        TAP(SHOW_BAT, 4500)
-        TAP(SLEEP, 1000)
-        TAP(SHOW_BAT, 1000)
-        TAP(WAKE, 1000)
-        TAP(SHOW_BAT, 500)
-        TAP(NOP, 4000)
+        TAP(NOP, 4480)
+        TAP(SHOW_BAT, 990)   /* 4.5 s */
+        TAP(SLEEP, 990)      /* 5.5 s */
+        TAP(SHOW_BAT, 990)   /* 6.5 s, ignored */
+        TAP(WAKE, 490)       /* 7.5 s */
+        TAP(SHOW_BAT, 3990)  /* 8.0 s */
+        TAP(NOP, 10)
     >;
 };

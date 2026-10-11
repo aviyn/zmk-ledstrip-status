@@ -367,7 +367,10 @@ static void status_thread(void *p1, void *p2, void *p3) {
     struct request req;
 
     for (;;) {
-        k_msgq_get(&request_q, &req, K_FOREVER);
+        // fails with -ENOMSG when the queue is purged for sleep
+        if (k_msgq_get(&request_q, &req, K_FOREVER) < 0) {
+            continue;
+        }
         status_run(req);
 
         if (k_msgq_num_used_get(&request_q) == 0) {
