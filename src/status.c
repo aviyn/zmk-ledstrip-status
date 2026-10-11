@@ -21,12 +21,18 @@
 #include <zmk/activity.h>
 #include <zmk/battery.h>
 #include <zmk/ble.h>
+#include <zmk/keymap.h>
+#include <dt-bindings/zmk/hid_indicators.h>
 #include <zmk/endpoints.h>
 #include <zmk/event_manager.h>
 #include <zmk/events/activity_state_changed.h>
 #include <zmk/events/battery_state_changed.h>
 #include <zmk/events/ble_active_profile_changed.h>
 #include <zmk/events/endpoint_changed.h>
+#include <zmk/events/hid_indicators_changed.h>
+#include <zmk/events/keycode_state_changed.h>
+#include <zmk/events/layer_state_changed.h>
+#include <zmk/events/position_state_changed.h>
 #include <zmk/events/split_peripheral_status_changed.h>
 #include <zmk/events/usb_conn_state_changed.h>
 #include <zmk/split/bluetooth/peripheral.h>
@@ -77,9 +83,32 @@ BUILD_ASSERT(ARRAY_SIZE(led_order) == NUM_LEDS, "led-order must list every LED o
 #define STRIP_INDEX(i) (i)
 #endif
 
+#define SHOW_LAYER                                                                                 \
+    (IS_ENABLED(CONFIG_LEDSTRIP_STATUS_SHOW_LAYER) && IS_CENTRAL &&                                \
+     DT_NODE_HAS_PROP(STATUS_NODE, layer_colors))
+#define SHOW_CAPS_LOCK                                                                             \
+    (IS_ENABLED(CONFIG_LEDSTRIP_STATUS_SHOW_CAPS_LOCK) && IS_ENABLED(CONFIG_ZMK_HID_INDICATORS))
+// caps word has no event or public state; its device data is a single `bool active`
+#define SHOW_CAPS_WORD                                                                             \
+    (IS_ENABLED(CONFIG_LEDSTRIP_STATUS_SHOW_CAPS_WORD) && IS_CENTRAL &&                            \
+     DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(caps_word)))
+
+#define LAYER_LED DT_PROP(STATUS_NODE, layer_led)
+#define CAPS_LED DT_PROP_OR(STATUS_NODE, caps_led, NUM_LEDS - 1)
+BUILD_ASSERT(LAYER_LED < NUM_LEDS && CAPS_LED < NUM_LEDS,
+             "layer-led and caps-led must be LEDs of the strip");
+
+#if SHOW_LAYER
+static const uint32_t layer_colors[] = DT_PROP(STATUS_NODE, layer_colors);
+#endif
+#if SHOW_CAPS_WORD
+static const struct device *caps_word_dev = DEVICE_DT_GET(DT_NODELABEL(caps_word));
+#endif
+
 #define FULL 1000 // brightness scale, in permille of CONFIG_LEDSTRIP_STATUS_BRIGHTNESS
 #define HALF (CONFIG_LEDSTRIP_STATUS_HALF_PERCENT * 10)
 #define DIM (CONFIG_LEDSTRIP_STATUS_DIM_PERCENT * 10)
+#define INDICATOR (CONFIG_LEDSTRIP_STATUS_INDICATOR_PERCENT * 10)
 
 struct color {
     uint8_t r, g, b;
@@ -93,6 +122,10 @@ static const struct color BLUE __maybe_unused = {0, 0, 255};
 static const struct color CYAN __maybe_unused = {0, 200, 255};
 static const struct color WHITE __maybe_unused = {255, 255, 255};
 
+static struct color __maybe_unused hex_color(uint32_t rgb) {
+    return (struct color){rgb >> 16, (rgb >> 8) & 0xff, rgb & 0xff};
+}
+
 enum display {
     DISPLAY_GAUGE,    // battery gauge
     DISPLAY_CHARGING, // battery gauge, highest lit LED breathing
@@ -100,10 +133,11 @@ enum display {
     DISPLAY_CRITICAL, // battery gauge, blinking
     DISPLAY_PROFILE,  // central: active BLE profile and its state
     DISPLAY_LINK,     // peripheral: split link connected (blue) or not (red)
+    DISPLAY_REFRESH,  // not a display: wakes the thread to redraw the background
 };
 
-static const char *const display_names[] = {"gauge",  "charging", "charged",
-                                            "critical", "profile", "link"};
+static const char *const display_names[] = {"gauge",   "charging", "charged", "critical",
+                                            "profile", "link",     "refresh"};
 
 struct request {
     uint8_t display;
@@ -121,6 +155,15 @@ static bool powered;
 
 static bool initialized;
 
+// background state, written by the event side and read by the display thread
+static bool idle;
+static bool bg_charging;
+static zmk_hid_indicators_t hid_indicators;
+static atomic_t refresh_pending;
+
+// the last frame sent had a lit LED
+static bool lit;
+
 static void post(enum display display, uint32_t duration_ms) {
     struct request req = {.display = display, .duration_ms = duration_ms};
 
@@ -129,6 +172,18 @@ static void post(enum display display, uint32_t duration_ms) {
     }
     if (k_msgq_put(&request_q, &req, K_NO_WAIT) < 0) {
         LOG_WRN("Status LED queue full, dropping display %d", display);
+    }
+}
+
+// redraw the background, e.g. after a layer or caps change
+static void refresh(void) {
+    struct request req = {.display = DISPLAY_REFRESH};
+
+    if (!atomic_cas(&refresh_pending, 0, 1)) {
+        return;
+    }
+    if (suspended || k_msgq_put(&request_q, &req, K_NO_WAIT) < 0) {
+        atomic_clear(&refresh_pending);
     }
 }
 
@@ -186,12 +241,14 @@ static uint32_t breathe(int64_t t) {
  * Fuel gauge over all LEDs: each LED is two steps (half, full), so 3 LEDs give
  * 6 steps. 84-100 % lights all three, 1-16 % half of the first.
  */
+static int gauge_steps(uint8_t level) { return MIN(level * 2 * NUM_LEDS / 100 + 1, 2 * NUM_LEDS); }
+
 static void render_gauge(int64_t t, bool breathing, bool blinking) {
     uint8_t level = 0;
 #if HAS_BATTERY
     level = zmk_battery_state_of_charge();
 #endif
-    int steps = MIN(level * 2 * NUM_LEDS / 100 + 1, 2 * NUM_LEDS);
+    int steps = gauge_steps(level);
     int top = (steps - 1) / 2;
     struct color c;
 
@@ -279,7 +336,52 @@ static void render(enum display display, int64_t t) {
     case DISPLAY_LINK:
         render_link();
         break;
+    case DISPLAY_REFRESH:
+        break;
     }
+}
+
+/*
+ * What the strip shows when no timed display runs: the charging animation
+ * (CHARGING_ALWAYS), with the layer color and caps state on their own LEDs on
+ * top. Returns whether anything is lit; sets *animated if it needs frames.
+ */
+static bool render_background(int64_t t, bool *animated) {
+    bool any = false;
+
+    clear_leds();
+    *animated = false;
+    if (suspended) {
+        return false;
+    }
+    if (bg_charging) {
+        render_gauge(t, true, false);
+        *animated = true;
+        any = true;
+    }
+    if (IS_ENABLED(CONFIG_LEDSTRIP_STATUS_INDICATORS_IDLE_OFF) && idle && !usb_powered()) {
+        return any;
+    }
+#if SHOW_LAYER
+    uint8_t layer = zmk_keymap_highest_layer_active();
+    if (layer < ARRAY_SIZE(layer_colors) && layer_colors[layer] != 0) {
+        set_led(LAYER_LED, hex_color(layer_colors[layer]), INDICATOR);
+        any = true;
+    }
+#endif
+#if SHOW_CAPS_WORD
+    if (*(const bool *)caps_word_dev->data) {
+        set_led(CAPS_LED, hex_color(DT_PROP(STATUS_NODE, caps_word_color)), INDICATOR);
+        return true;
+    }
+#endif
+#if SHOW_CAPS_LOCK
+    if (hid_indicators & HID_INDICATOR_CAPS_LOCK) {
+        set_led(CAPS_LED, hex_color(DT_PROP(STATUS_NODE, caps_lock_color)), INDICATOR);
+        any = true;
+    }
+#endif
+    return any;
 }
 
 /* ----- output ----- */
@@ -330,11 +432,24 @@ static bool show(void) {
     if (!status_power_on()) {
         return false;
     }
+    lit = false;
+    for (int i = 0; i < NUM_LEDS; i++) {
+        lit |= pixels[i].r || pixels[i].g || pixels[i].b;
+    }
     int err = led_strip_update_rgb(strip, pixels, NUM_LEDS);
     if (err < 0) {
         LOG_ERR("Status LED update failed (%d)", err);
     }
     return true;
+}
+
+// a short dark pause between two different things on the strip
+static void gap(void) {
+    if (powered && lit) {
+        clear_leds();
+        show();
+        k_msleep(CONFIG_LEDSTRIP_STATUS_GAP_MS);
+    }
 }
 
 static void status_run(struct request req) {
@@ -365,20 +480,35 @@ static void status_run(struct request req) {
 
 static void status_thread(void *p1, void *p2, void *p3) {
     struct request req;
+    bool animated;
 
     for (;;) {
-        // fails with -ENOMSG when the queue is purged for sleep
-        if (k_msgq_get(&request_q, &req, K_FOREVER) < 0) {
+        // between timed displays: the background, or dark with the supply off
+        bool background = render_background(k_uptime_get(), &animated);
+        if (background) {
+            show();
+        } else {
+            status_power_off();
+        }
+
+        // fails on timeout (next background frame), and with -ENOMSG when the
+        // queue is purged for sleep
+        k_timeout_t wait =
+            background && animated ? K_MSEC(CONFIG_LEDSTRIP_STATUS_FRAME_MS) : K_FOREVER;
+        if (k_msgq_get(&request_q, &req, wait) < 0) {
             continue;
         }
-        status_run(req);
+        do {
+            if (req.display == DISPLAY_REFRESH) {
+                atomic_clear(&refresh_pending);
+                continue;
+            }
+            gap();
+            status_run(req);
+        } while (k_msgq_get(&request_q, &req, K_NO_WAIT) == 0);
 
-        if (k_msgq_num_used_get(&request_q) == 0) {
-            status_power_off();
-        } else if (powered) {
-            clear_leds();
-            show();
-            k_msleep(CONFIG_LEDSTRIP_STATUS_GAP_MS);
+        if (render_background(k_uptime_get(), &animated)) {
+            gap();
         }
     }
 }
@@ -389,6 +519,9 @@ K_THREAD_DEFINE(ledstrip_status_tid, CONFIG_LEDSTRIP_STATUS_THREAD_STACK_SIZE, s
 /* ----- public API, used by the behaviors ----- */
 
 void ledstrip_status_show_battery(void) {
+    if (bg_charging) {
+        return; // the charging animation is already showing
+    }
     post(charging() ? DISPLAY_CHARGING : DISPLAY_GAUGE, CONFIG_LEDSTRIP_STATUS_SHOW_MS);
 }
 
@@ -423,10 +556,18 @@ static void charge_work_cb(struct k_work *work) {
     rearm(&vbus_gpio);
 #endif
 
+    bool always = IS_ENABLED(CONFIG_LEDSTRIP_STATUS_CHARGING_ALWAYS) && chg;
+    if (always != bg_charging) {
+        bg_charging = always;
+        refresh();
+    }
+
     if (initialized) {
         if (HAS_CHARGE) {
             if (chg && !was_charging) {
-                post(DISPLAY_CHARGING, CONFIG_LEDSTRIP_STATUS_CHARGING_SHOW_MS);
+                if (!always) {
+                    post(DISPLAY_CHARGING, CONFIG_LEDSTRIP_STATUS_CHARGING_SHOW_MS);
+                }
             } else if (!chg && usb && (was_charging || !was_usb_powered)) {
                 // finished charging, or plugged in with a full battery
                 post(DISPLAY_CHARGED, CONFIG_LEDSTRIP_STATUS_CHARGED_SHOW_MS);
@@ -456,10 +597,51 @@ static void vbus_isr(const struct device *port, struct gpio_callback *cb, uint32
 }
 #endif
 
+/* ----- caps word, which has no event: check shortly after each key ----- */
+
+#if SHOW_CAPS_WORD
+static bool was_caps_word;
+
+static void caps_word_work_cb(struct k_work *work) {
+    bool active = *(const bool *)caps_word_dev->data;
+
+    if (active != was_caps_word) {
+        was_caps_word = active;
+        refresh();
+    }
+}
+
+static K_WORK_DELAYABLE_DEFINE(caps_word_work, caps_word_work_cb);
+#endif
+
+/* ----- battery level drops ----- */
+
+#define NO_STEP 0xff
+static uint8_t lowest_step = NO_STEP;
+
+// true each time the gauge reaches a new lowest step on battery
+static bool level_dropped(uint8_t level) {
+    uint8_t step = gauge_steps(level);
+
+    if (usb_powered()) {
+        lowest_step = NO_STEP; // charging: start over once unplugged
+        return false;
+    }
+    if (lowest_step == NO_STEP || step >= lowest_step) {
+        lowest_step = MIN(step, lowest_step);
+        return false;
+    }
+    lowest_step = step;
+    return true;
+}
+
 /* ----- boot ----- */
 
 static void boot_work_cb(struct k_work *work) {
     charge_work_cb(NULL); // take the charger state without announcing it
+#if HAS_BATTERY
+    level_dropped(zmk_battery_state_of_charge()); // baseline
+#endif
     initialized = true;
 
     if (!IS_ENABLED(CONFIG_LEDSTRIP_STATUS_SHOW_ON_BOOT)) {
@@ -528,10 +710,36 @@ static int ledstrip_status_listener(const zmk_event_t *eh) {
         k_spin_unlock(&power_lock, key);
         if (suspended) {
             k_msgq_purge(&request_q);
+            atomic_clear(&refresh_pending);
             LOG_DBG("sleep: supply off");
+        } else {
+            idle = activity->state == ZMK_ACTIVITY_IDLE;
+            refresh();
         }
         return ZMK_EV_EVENT_BUBBLE;
     }
+
+    // indicators are tracked from boot on
+#if SHOW_CAPS_LOCK
+    const struct zmk_hid_indicators_changed *ind = as_zmk_hid_indicators_changed(eh);
+    if (ind) {
+        hid_indicators = ind->indicators;
+        refresh();
+        return ZMK_EV_EVENT_BUBBLE;
+    }
+#endif
+#if SHOW_LAYER
+    if (as_zmk_layer_state_changed(eh)) {
+        refresh();
+        return ZMK_EV_EVENT_BUBBLE;
+    }
+#endif
+#if SHOW_CAPS_WORD
+    if (as_zmk_position_state_changed(eh) || as_zmk_keycode_state_changed(eh)) {
+        k_work_reschedule(&caps_word_work, K_MSEC(5));
+        return ZMK_EV_EVENT_BUBBLE;
+    }
+#endif
 
     if (!initialized) {
         return ZMK_EV_EVENT_BUBBLE;
@@ -540,8 +748,12 @@ static int ledstrip_status_listener(const zmk_event_t *eh) {
 #if HAS_BATTERY
     const struct zmk_battery_state_changed *battery = as_zmk_battery_state_changed(eh);
     if (battery) {
+        bool dropped = level_dropped(battery->state_of_charge);
+
         if (battery->state_of_charge < CONFIG_LEDSTRIP_STATUS_LEVEL_CRITICAL && !usb_powered()) {
             post(DISPLAY_CRITICAL, CONFIG_LEDSTRIP_STATUS_CRITICAL_SHOW_MS);
+        } else if (dropped && IS_ENABLED(CONFIG_LEDSTRIP_STATUS_SHOW_ON_LEVEL_DROP)) {
+            post(DISPLAY_GAUGE, CONFIG_LEDSTRIP_STATUS_SHOW_MS);
         }
         return ZMK_EV_EVENT_BUBBLE;
     }
@@ -578,4 +790,14 @@ ZMK_SUBSCRIPTION(ledstrip_status, zmk_endpoint_changed);
 #endif
 #if IS_BLE_PERIPHERAL
 ZMK_SUBSCRIPTION(ledstrip_status, zmk_split_peripheral_status_changed);
+#endif
+#if SHOW_CAPS_LOCK
+ZMK_SUBSCRIPTION(ledstrip_status, zmk_hid_indicators_changed);
+#endif
+#if SHOW_LAYER
+ZMK_SUBSCRIPTION(ledstrip_status, zmk_layer_state_changed);
+#endif
+#if SHOW_CAPS_WORD
+ZMK_SUBSCRIPTION(ledstrip_status, zmk_position_state_changed);
+ZMK_SUBSCRIPTION(ledstrip_status, zmk_keycode_state_changed);
 #endif

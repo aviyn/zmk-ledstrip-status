@@ -1,0 +1,27 @@
+#include "../ledstrip_status.dtsi"
+
+/*
+ * CHARGING_ALWAYS: the charging animation runs for as long as the charger
+ * reports charging, with the layer color on top while a layer is held. The
+ * battery key changes nothing meanwhile. Charging completes: green for 3 s,
+ * then off.
+ */
+&test_battery {
+    level = <45>;
+};
+
+&status_leds {
+    layer-colors = <0 0x0000ff>;
+};
+
+&kscan {
+    events = <
+        TAP(NOP, 4480)
+        TAP(VBUS_ON, 90)         /* 4.5 s */
+        TAP(CHG_ON, 3490)        /* 4.6 s: animation from 5.1 s */
+        HOLD(LAYER_1, 1000)      /* 8.1-9.1 s: blue outer LED over it */
+        TAP(SHOW_BAT, 3480)      /* 9.1 s: no effect */
+        TAP(CHG_OFF, 3990)       /* 12.6 s: charged at 13.1 s */
+        TAP(NOP, 10)
+    >;
+};

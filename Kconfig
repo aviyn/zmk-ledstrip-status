@@ -67,7 +67,41 @@ config LEDSTRIP_STATUS_CRITICAL_SHOW_MS
     int "Duration of the critical battery warning"
     default 1500
 
+config LEDSTRIP_STATUS_SHOW_ON_LEVEL_DROP
+    bool "Show the gauge whenever it drops a step (one sixth with 3 LEDs) on battery"
+
+# Persistent indicators: shown whenever no timed display is running
+
+config LEDSTRIP_STATUS_SHOW_LAYER
+    bool "Show the highest active layer's color (layer-colors) on one LED"
+    default y
+
+config LEDSTRIP_STATUS_SHOW_CAPS_LOCK
+    bool "Show caps lock on one LED"
+    default y
+    imply ZMK_HID_INDICATORS
+    imply ZMK_SPLIT_PERIPHERAL_HID_INDICATORS
+
+config LEDSTRIP_STATUS_SHOW_CAPS_WORD
+    bool "Show caps word on the caps LED (central)"
+    default y
+
+config LEDSTRIP_STATUS_INDICATOR_PERCENT
+    int "Brightness of the layer and caps indicators, in percent of full"
+    range 1 100
+    default 100
+
+config LEDSTRIP_STATUS_INDICATORS_IDLE_OFF
+    bool "Hide the layer and caps indicators while idle on battery"
+    default y
+
 # Charging
+
+config LEDSTRIP_STATUS_CHARGING_ALWAYS
+    bool "Show the charging animation for as long as the battery charges"
+    help
+      Without this, the animation runs for CHARGING_SHOW_MS after charging
+      starts. The board is on USB power meanwhile, so it costs no battery.
 
 config LEDSTRIP_STATUS_CHARGING_SHOW_MS
     int "How long the charging animation runs after charging starts"

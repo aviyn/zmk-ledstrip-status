@@ -19,6 +19,8 @@
 #include <zmk/activity.h>
 #include <zmk/behavior.h>
 #include <zmk/events/activity_state_changed.h>
+#include <zmk/events/hid_indicators_changed.h>
+#include <dt-bindings/zmk/hid_indicators.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
@@ -125,11 +127,23 @@ static int lst_pressed(struct zmk_behavior_binding *binding,
         break;
     case LST_SLEEP:
     case LST_WAKE:
-        LOG_DBG("t=%lld %s", k_uptime_get(), binding->param1 == LST_SLEEP ? "sleep" : "wake");
-        raise_zmk_activity_state_changed((struct zmk_activity_state_changed){
-            .state = binding->param1 == LST_SLEEP ? ZMK_ACTIVITY_SLEEP : ZMK_ACTIVITY_ACTIVE});
+    case LST_IDLE: {
+        static const char *const names[] = {[LST_SLEEP] = "sleep", [LST_WAKE] = "wake",
+                                            [LST_IDLE] = "idle"};
+        static const enum zmk_activity_state states[] = {[LST_SLEEP] = ZMK_ACTIVITY_SLEEP,
+                                                         [LST_WAKE] = ZMK_ACTIVITY_ACTIVE,
+                                                         [LST_IDLE] = ZMK_ACTIVITY_IDLE};
+        LOG_DBG("t=%lld %s", k_uptime_get(), names[binding->param1]);
+        raise_zmk_activity_state_changed(
+            (struct zmk_activity_state_changed){.state = states[binding->param1]});
         // sleep cuts the supply without a blank frame: log the next frame even if it repeats
         last_frame[0] = '\0';
+        break;
+    }
+    case LST_CAPS_LOCK:
+        LOG_DBG("t=%lld caps lock %d", k_uptime_get(), binding->param2);
+        raise_zmk_hid_indicators_changed((struct zmk_hid_indicators_changed){
+            .indicators = binding->param2 ? HID_INDICATOR_CAPS_LOCK : 0});
         break;
     }
     return ZMK_BEHAVIOR_OPAQUE;

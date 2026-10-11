@@ -51,13 +51,26 @@
                 &lst LST_BATTERY 5   &lst LST_BATTERY 100  &lst LST_VBUS 1      &lst LST_VBUS 0
                 &lst LST_CHARGE 1    &lst LST_CHARGE 0     &lst LST_SLEEP 0     &lst LST_WAKE 0
                 &led_status_bat      &led_status_con       &none                &none
+                &caps_word           &kp A                 &kp SPACE            &mo 1
+                &lst LST_CAPS_LOCK 1 &lst LST_CAPS_LOCK 0  &lst LST_IDLE 0      &none
+            >;
+        };
+
+        layer_1 {
+            bindings = <
+                &trans &trans &trans &trans
+                &trans &trans &trans &trans
+                &trans &trans &trans &trans
+                &trans &trans &trans &trans
+                &trans &trans &trans &trans
+                &trans &trans &trans &trans
             >;
         };
     };
 };
 
 &kscan {
-    rows = <4>;
+    rows = <6>;
     columns = <4>;
 };
 
@@ -77,6 +90,16 @@
 #define SHOW_BAT 3, 0
 #define SHOW_CON 3, 1
 #define NOP 3, 3
+#define CAPS_WORD 4, 0
+#define KEY_A 4, 1
+#define KEY_SPACE 4, 2
+#define LAYER_1 4, 3
+#define CAPS_ON 5, 0
+#define CAPS_OFF 5, 1
+#define IDLE 5, 2
+
+/* hold a key for `ms` (+10 ms), e.g. a momentary layer */
+#define HOLD(key, ms) ZMK_MOCK_PRESS(key, ms) ZMK_MOCK_RELEASE(key, 10)
 
 /*
  * Tap a key, then wait `ms` (+20 ms for the tap itself). The mock waits

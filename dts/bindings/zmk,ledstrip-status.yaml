@@ -37,6 +37,32 @@ properties:
       Strip index of each logical LED. Logical LED 0 is where the battery
       gauge starts filling. Defaults to the strip order.
 
+  layer-colors:
+    type: array
+    description: |
+      Color (0xRRGGBB) of each layer, shown on `layer-led` while it is the
+      highest active layer. 0 (and layers past the end) show nothing, so the
+      base layer is usually 0. Central only: peripherals don't track layers.
+
+  layer-led:
+    type: int
+    default: 0
+    description: Logical LED for the layer color.
+
+  caps-led:
+    type: int
+    description: Logical LED for caps lock and caps word. Defaults to the last LED.
+
+  caps-lock-color:
+    type: int
+    default: 0xffffff
+    description: Caps lock color (0xRRGGBB), on every half.
+
+  caps-word-color:
+    type: int
+    default: 0xff00ff
+    description: Caps word color (0xRRGGBB), central only; takes precedence over caps lock.
+
   power-on-delay-ms:
     type: int
     default: 1

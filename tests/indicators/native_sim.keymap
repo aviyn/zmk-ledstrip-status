@@ -1,0 +1,29 @@
+#include "../ledstrip_status.dtsi"
+
+/*
+ * Persistent indicators: layer 1 shows blue on the outer LED while held.
+ * Caps lock shows white on the inner LED; caps word shows magenta there,
+ * over caps lock, until a non-word key (space) ends it. A timed display
+ * hides the indicators and they come back after it. While idle on battery
+ * they are hidden, and any key brings them back.
+ */
+&status_leds {
+    layer-colors = <0 0x0000ff>;
+};
+
+&kscan {
+    events = <
+        TAP(NOP, 4480)
+        HOLD(LAYER_1, 1000)      /* 4.5-5.5 s: layer 1 */
+        TAP(NOP, 480)
+        TAP(CAPS_ON, 990)        /* 6.0 s: caps lock on */
+        TAP(CAPS_WORD, 490)      /* 7.0 s: caps word over caps lock */
+        TAP(KEY_A, 490)          /* 7.5 s: a letter keeps caps word */
+        TAP(KEY_SPACE, 990)      /* 8.0 s: space ends caps word */
+        TAP(SHOW_BAT, 3990)      /* 9.0 s: gauge 3 s, then caps lock again */
+        TAP(IDLE, 990)           /* 13.0 s: idle, caps lock hidden */
+        TAP(KEY_A, 990)          /* 14.0 s: a key: active again */
+        TAP(CAPS_OFF, 990)       /* 15.0 s: caps lock off, supply off */
+        TAP(NOP, 10)
+    >;
+};
