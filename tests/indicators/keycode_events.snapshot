@@ -1,0 +1,26 @@
+show gauge for 3000 ms
+supply on
+t=1003 supply=on 002000 002000 002000 
+t=4002 supply=on 000000 000000 000000 
+supply off
+supply on
+t=4505 supply=on 000020 000000 000000 
+t=5504 supply=on 000000 000000 000000 
+supply off
+t=6007 caps lock 1
+supply on
+t=6009 supply=on 000000 000000 202020 
+t=7015 supply=on 000000 000000 200020 
+t=8019 supply=on 000000 000000 202020 
+t=9015 supply=on 000000 000000 000000 
+show gauge for 3000 ms
+t=9166 supply=on 002000 002000 002000 
+t=12167 supply=on 000000 000000 000000 
+t=12318 supply=on 000000 000000 202020 
+t=15000 supply=on 000000 000000 000000 
+supply off
+supply on
+t=16519 supply=on 000000 000000 202020 
+t=17519 caps lock 0
+t=17519 supply=on 000000 000000 000000 
+supply off

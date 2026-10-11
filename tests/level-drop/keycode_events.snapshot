@@ -1,0 +1,33 @@
+show gauge for 3000 ms
+supply on
+t=1003 supply=on 002000 002000 002000 
+t=4002 supply=on 000000 000000 000000 
+supply off
+t=4503 battery 70 %
+show gauge for 3000 ms
+supply on
+t=5003 supply=on 002000 002000 000c00 
+t=8002 supply=on 000000 000000 000000 
+supply off
+t=8505 battery 45 %
+show gauge for 3000 ms
+supply on
+t=9003 supply=on 201500 0c0800 000000 
+t=12002 supply=on 000000 000000 000000 
+supply off
+t=12507 battery 70 %
+t=14509 battery 45 %
+t=16511 vbus 1
+show charged for 3000 ms
+supply on
+t=17014 supply=on 002000 002000 002000 
+t=18513 battery 100 %
+t=20013 supply=on 000000 000000 000000 
+supply off
+t=22515 vbus 0
+t=24517 battery 70 %
+show gauge for 3000 ms
+supply on
+t=25003 supply=on 002000 002000 000c00 
+t=28002 supply=on 000000 000000 000000 
+supply off
