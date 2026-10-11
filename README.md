@@ -14,7 +14,23 @@ It's modelled on [zmk-rgbled-widget](https://github.com/caksoylar/zmk-rgbled-wid
 | Charging starts | Battery gauge with the highest lit LED breathing, for 5 s. |
 | Charging completes, or USB plugged into a full battery | Solid green for 3 s. |
 | Battery level change below 10 % | The gauge blinks red. |
+| Battery reaches a new lowest gauge step (`SHOW_ON_LEVEL_DROP`) | Battery gauge for 3 s. Going back up doesn't count; on USB the step follows the level. |
 | Sleep | Off, and the supply is cut. |
+
+### Persistent indicators
+
+These stay lit while no timed display runs, and come back after one ends:
+
+| Indicator | LED | |
+|---|---|---|
+| Layer | `layer-led` (default 0) | The highest active layer's color from `layer-colors`. A 0 entry shows nothing. Central only. |
+| Caps word | `caps-led` (default: last LED) | `caps-word-color`, default magenta. Central only. |
+| Caps lock | `caps-led` | `caps-lock-color`, default white. Shown on every half, through ZMK's split HID-indicator relay. |
+| Charging (`CHARGING_ALWAYS`) | all | The charging animation for as long as the battery charges. Layer and caps indicators show on top. |
+
+- **Idle:** while idle on battery, the layer and caps indicators hide (`INDICATORS_IDLE_OFF`), and any key brings them back.
+- **Power:** each lit indicator keeps the strip powered, about 1 mA per LED plus the LED itself.
+- **Caps word** has no ZMK event or public state. The module reads the `&caps_word` device's internal `active` flag shortly after each key event.
 
 ### Battery gauge
 
@@ -78,6 +94,7 @@ Describe the strip and the status node in the shield's devicetree. The module tu
         enable-gpios = <&gpio1 15 GPIO_ACTIVE_LOW>;                    /* optional */
         charge-gpios = <&gpio0 17 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;   /* optional, XIAO nRF52840 CHG */
         led-order = <2 1 0>;                                           /* optional */
+        layer-colors = <0 0x0000ff 0x00ffff>;                          /* optional */
     };
 };
 ```
@@ -109,6 +126,11 @@ All options are in [`Kconfig`](Kconfig). The main ones:
 | `CONFIG_LEDSTRIP_STATUS_LEVEL_GREEN` / `_YELLOW` / `_AMBER` | 50 / 34 / 17 | gauge colour thresholds |
 | `CONFIG_LEDSTRIP_STATUS_LEVEL_CRITICAL` | 10 | 0 disables the warning |
 | `CONFIG_LEDSTRIP_STATUS_CHARGING_SHOW_MS` | 5000 | |
+| `CONFIG_LEDSTRIP_STATUS_CHARGING_ALWAYS` | n | animate for as long as charging lasts |
+| `CONFIG_LEDSTRIP_STATUS_SHOW_ON_LEVEL_DROP` | n | gauge on each new lowest step |
+| `CONFIG_LEDSTRIP_STATUS_SHOW_LAYER` / `_CAPS_LOCK` / `_CAPS_WORD` | y | persistent indicators |
+| `CONFIG_LEDSTRIP_STATUS_INDICATOR_PERCENT` | 100 | indicator brightness |
+| `CONFIG_LEDSTRIP_STATUS_INDICATORS_IDLE_OFF` | y | |
 
 ## Tests
 
@@ -117,13 +139,16 @@ All options are in [`Kconfig`](Kconfig). The main ones:
 - **Test doubles** in [`src/test/`](src/test/test_support.c), built only with `CONFIG_LEDSTRIP_STATUS_TEST`:
   - a fake LED strip that logs every changed frame, with a timestamp and whether the supply switch is on
   - a fuel gauge whose level the test sets
-  - a test behavior, `&lst`, whose keys set the battery level, VBUS and the charger input on emulated GPIOs, or send sleep and wake
+  - a test behavior, `&lst`, whose keys set the battery level, VBUS and the charger input on emulated GPIOs, set the host's caps lock, or send sleep and wake
 - **Cases:**
   - `boot`, `boot-order`: the boot gauge, plus the reversed `led-order`
   - `levels`: every gauge step, the red blink, and the critical warning
   - `charging`: settle, breathing, the key while charging, completion, unplugging, and plugging in with a full battery
   - `sleep`: the supply is cut at once, and requests while asleep are ignored
   - `queue`: restart on a repeat press, then the next display after a dark gap
+  - `indicators`: the layer color, caps lock, caps word over caps lock, return after a timed display, and hiding on ZMK's real idle
+  - `charging-always`: the animation for the whole charge, with the layer color on top
+  - `level-drop`: only new lowest steps are shown, including after charging
 - **Snapshots:** each case compares its log with `keycode_events.snapshot`. After an intended change, run the workflow manually with **accept** ticked, review the new snapshots in the `test-logs` artifact, and commit them.
 
 Not covered: the BLE profile view and the split link, because `native_sim` has no BLE; real LED timing; and current draw.
