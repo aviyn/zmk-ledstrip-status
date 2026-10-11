@@ -1,0 +1,36 @@
+description: |
+  Battery, charging and connection status shown on a short addressable LED
+  strip (WS2812 / SK6812), with an optional power switch for the strip.
+
+compatible: "zmk,ledstrip-status"
+
+properties:
+  led-strip:
+    type: phandle
+    required: true
+    description: The led-strip device (e.g. worldsemi,ws2812-spi) to drive.
+
+  enable-gpios:
+    type: phandle-array
+    description: |
+      Switches the strip's supply (e.g. the gate of a P-FET high-side switch,
+      flagged GPIO_ACTIVE_LOW). Driven active only while something is shown,
+      so the LEDs draw nothing when dark.
+
+  charge-gpios:
+    type: phandle-array
+    description: |
+      Charger status input, active while the battery is charging. On the
+      XIAO nRF52840 this is the BQ25101 CHG output on P0.17, open drain,
+      active low: <&gpio0 17 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>.
+
+  led-order:
+    type: array
+    description: |
+      Strip index of each logical LED. Logical LED 0 is where the battery
+      gauge starts filling. Defaults to the strip order.
+
+  power-on-delay-ms:
+    type: int
+    default: 1
+    description: Wait after switching the supply on before sending data.

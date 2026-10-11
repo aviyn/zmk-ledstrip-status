@@ -1,0 +1,4 @@
+target_sources_ifdef(CONFIG_LEDSTRIP_STATUS app PRIVATE src/status.c)
+target_sources_ifdef(CONFIG_ZMK_BEHAVIOR_LEDSTRIP_STATUS app PRIVATE src/behaviors/behavior_ledstrip_status.c)
+
+zephyr_include_directories(include)

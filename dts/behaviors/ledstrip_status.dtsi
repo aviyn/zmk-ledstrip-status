@@ -1,0 +1,14 @@
+/ {
+    behaviors {
+        /omit-if-no-ref/ led_status_bat: led_status_bat {
+            compatible = "zmk,behavior-ledstrip-status";
+            #binding-cells = <0>;
+            show-battery;
+        };
+        /omit-if-no-ref/ led_status_con: led_status_con {
+            compatible = "zmk,behavior-ledstrip-status";
+            #binding-cells = <0>;
+            show-connection;
+        };
+    };
+};

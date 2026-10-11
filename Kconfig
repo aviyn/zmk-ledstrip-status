@@ -1,0 +1,112 @@
+DT_COMPAT_ZMK_LEDSTRIP_STATUS := zmk,ledstrip-status
+
+config LEDSTRIP_STATUS
+    bool "Show battery, charging and connection status on an addressable LED strip"
+    default $(dt_compat_enabled,$(DT_COMPAT_ZMK_LEDSTRIP_STATUS))
+    select LED_STRIP
+
+if LEDSTRIP_STATUS
+
+config LEDSTRIP_STATUS_BRIGHTNESS
+    int "Full brightness, 0-255 per channel"
+    range 1 255
+    default 32
+    help
+      Cap applied to every color. About 12 % of full scale keeps the current
+      low and is plenty behind a light pipe.
+
+config LEDSTRIP_STATUS_HALF_PERCENT
+    int "Brightness of a half-lit gauge LED, in percent of full"
+    range 1 100
+    default 40
+
+config LEDSTRIP_STATUS_DIM_PERCENT
+    int "Brightness of inactive profile LEDs, in percent of full"
+    range 0 100
+    default 15
+
+config LEDSTRIP_STATUS_SHOW_MS
+    int "How long the battery gauge and connection status are shown"
+    default 3000
+
+config LEDSTRIP_STATUS_SHOW_ON_BOOT
+    bool "Show the battery gauge (and connection status) after boot"
+    default y
+
+config LEDSTRIP_STATUS_BOOT_DELAY_MS
+    int "Wait after boot before the first display, so the battery is sampled"
+    default 1000
+
+config LEDSTRIP_STATUS_SHOW_CONN_CHANGES
+    bool "Show connection status when the BLE profile or split link changes"
+    default y
+
+config LEDSTRIP_STATUS_LINK_BLINK_MS
+    int "Peripheral: duration of the connected/disconnected blink"
+    default 500
+
+# Battery gauge colors, by state of charge
+
+config LEDSTRIP_STATUS_LEVEL_GREEN
+    int "Gauge is green at or above this battery level"
+    default 50
+
+config LEDSTRIP_STATUS_LEVEL_YELLOW
+    int "Gauge is yellow at or above this battery level"
+    default 34
+
+config LEDSTRIP_STATUS_LEVEL_AMBER
+    int "Gauge is amber at or above this level; below it the gauge is red and blinks"
+    default 17
+
+config LEDSTRIP_STATUS_LEVEL_CRITICAL
+    int "Blink the gauge on every battery level change below this level (0 disables)"
+    default 10
+
+config LEDSTRIP_STATUS_CRITICAL_SHOW_MS
+    int "Duration of the critical battery warning"
+    default 1500
+
+# Charging
+
+config LEDSTRIP_STATUS_CHARGING_SHOW_MS
+    int "How long the charging animation runs after charging starts"
+    default 5000
+
+config LEDSTRIP_STATUS_CHARGED_SHOW_MS
+    int "How long solid green is shown when charging completes"
+    default 3000
+
+config LEDSTRIP_STATUS_BREATHE_PERIOD_MS
+    int "Period of the charging breathing animation"
+    default 2000
+
+# Timing
+
+config LEDSTRIP_STATUS_BLINK_PERIOD_MS
+    int "Period of blinking displays"
+    default 500
+
+config LEDSTRIP_STATUS_FRAME_MS
+    int "Refresh interval while something is shown"
+    default 40
+
+config LEDSTRIP_STATUS_GAP_MS
+    int "Dark gap between two consecutive displays"
+    default 150
+
+config LEDSTRIP_STATUS_THREAD_STACK_SIZE
+    int "Stack size of the display thread"
+    default 1024
+
+config LEDSTRIP_STATUS_THREAD_PRIORITY
+    int "Priority of the display thread"
+    default 10
+
+endif # LEDSTRIP_STATUS
+
+DT_COMPAT_ZMK_BEHAVIOR_LEDSTRIP_STATUS := zmk,behavior-ledstrip-status
+
+config ZMK_BEHAVIOR_LEDSTRIP_STATUS
+    bool
+    default $(dt_compat_enabled,$(DT_COMPAT_ZMK_BEHAVIOR_LEDSTRIP_STATUS))

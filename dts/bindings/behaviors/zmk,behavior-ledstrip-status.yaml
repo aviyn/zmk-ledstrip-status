@@ -1,0 +1,11 @@
+description: Show battery or connection status on the status LED strip
+
+compatible: "zmk,behavior-ledstrip-status"
+
+include: zero_param.yaml
+
+properties:
+  show-battery:
+    type: boolean
+  show-connection:
+    type: boolean
