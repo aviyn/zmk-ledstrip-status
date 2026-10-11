@@ -1,0 +1,8 @@
+description: Test double for native_sim, a fuel gauge whose level a test sets
+
+compatible: "zmk,ledstrip-status-test-battery"
+
+properties:
+  level:
+    type: int
+    default: 100

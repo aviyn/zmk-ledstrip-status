@@ -1,0 +1,56 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      accept:
+        description: "Write new snapshots from this run (download them from the artifact)"
+        type: boolean
+        default: false
+
+jobs:
+  native-sim:
+    runs-on: ubuntu-latest
+    container:
+      image: docker.io/zmkfirmware/zmk-build-arm:4.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: zmk-ledstrip-status
+      - name: Set up a ZMK main workspace
+        run: |
+          mkdir -p manifest
+          cat > manifest/west.yml <<'MANIFEST'
+          manifest:
+            remotes:
+              - name: zmkfirmware
+                url-base: https://github.com/zmkfirmware
+            projects:
+              - name: zmk
+                remote: zmkfirmware
+                revision: main
+                import: app/west.yml
+            self:
+              path: manifest
+          MANIFEST
+          git -C manifest init -q
+          west init -l manifest
+          west update --fetch-opt=--filter=tree:0
+          west zephyr-export
+      - name: Run tests
+        working-directory: zmk/app
+        env:
+          ZMK_EXTRA_MODULES: ${{ github.workspace }}/zmk-ledstrip-status
+          ZMK_TESTS_AUTO_ACCEPT: ${{ inputs.accept && '1' || '' }}
+        run: ./run-test.sh ${{ github.workspace }}/zmk-ledstrip-status/tests
+      - name: Archive logs and snapshots
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            zmk/app/build/tests/**/*.log
+            zmk-ledstrip-status/tests/**/keycode_events.snapshot

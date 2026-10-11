@@ -1,0 +1,15 @@
+#include "../ledstrip_status.dtsi"
+
+/*
+ * Pressing the battery key again while the gauge is lit restarts its 3 s
+ * timeout instead of queueing a second gauge. A different request (the
+ * connection view) waits its turn, after a short dark gap.
+ */
+&kscan {
+    events = <
+        TAP(SHOW_BAT, 4500)
+        TAP(SHOW_BAT, 2000)
+        TAP(SHOW_CON, 100)
+        TAP(NOP, 7000)
+    >;
+};

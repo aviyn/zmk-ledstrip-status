@@ -1,0 +1,6 @@
+#include "../ledstrip_status.dtsi"
+
+/* gauge at 100 %: three full green LEDs from 1 s to 4 s, then supply off */
+&kscan {
+    events = <TAP(NOP, 5000)>;
+};

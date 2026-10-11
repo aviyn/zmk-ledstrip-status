@@ -53,6 +53,7 @@ BUILD_ASSERT(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 1,
 
 #define HAS_ENABLE DT_NODE_HAS_PROP(STATUS_NODE, enable_gpios)
 #define HAS_CHARGE DT_NODE_HAS_PROP(STATUS_NODE, charge_gpios)
+#define HAS_VBUS DT_NODE_HAS_PROP(STATUS_NODE, vbus_gpios)
 
 static const struct device *strip = DEVICE_DT_GET(STRIP_NODE);
 
@@ -62,6 +63,10 @@ static const struct gpio_dt_spec enable_gpio = GPIO_DT_SPEC_GET(STATUS_NODE, ena
 #if HAS_CHARGE
 static const struct gpio_dt_spec charge_gpio = GPIO_DT_SPEC_GET(STATUS_NODE, charge_gpios);
 static struct gpio_callback charge_cb;
+#endif
+#if HAS_VBUS
+static const struct gpio_dt_spec vbus_gpio = GPIO_DT_SPEC_GET(STATUS_NODE, vbus_gpios);
+static struct gpio_callback vbus_cb;
 #endif
 
 #if DT_NODE_HAS_PROP(STATUS_NODE, led_order)
@@ -97,6 +102,9 @@ enum display {
     DISPLAY_LINK,     // peripheral: split link connected (blue) or not (red)
 };
 
+static const char *const display_names[] = {"gauge",  "charging", "charged",
+                                            "critical", "profile", "link"};
+
 struct request {
     uint8_t display;
     uint32_t duration_ms;
@@ -127,7 +135,9 @@ static void post(enum display display, uint32_t duration_ms) {
 /* ----- charger state ----- */
 
 static bool usb_powered(void) {
-#if defined(NRF_POWER_HAS_USBREG) && NRF_POWER_HAS_USBREG
+#if HAS_VBUS
+    return gpio_pin_get_dt(&vbus_gpio) > 0;
+#elif defined(NRF_POWER_HAS_USBREG) && NRF_POWER_HAS_USBREG
     // works on split peripherals too, which have no USB stack
     return nrf_power_usbregstatus_vbusdet_get(NRF_POWER);
 #elif IS_ENABLED(CONFIG_ZMK_USB)
@@ -275,7 +285,7 @@ static void render(enum display display, int64_t t) {
 /* ----- output ----- */
 
 // switch the supply on if needed; false if the keyboard is going to sleep
-static bool power_on(void) {
+static bool status_power_on(void) {
     bool switched = false;
     k_spinlock_key_t key = k_spin_lock(&power_lock);
 
@@ -293,12 +303,13 @@ static bool power_on(void) {
     k_spin_unlock(&power_lock, key);
 
     if (switched) {
+        LOG_DBG("supply on");
         k_msleep(DT_PROP(STATUS_NODE, power_on_delay_ms));
     }
     return true;
 }
 
-static void power_off(void) {
+static void status_power_off(void) {
     if (!powered) {
         return;
     }
@@ -312,10 +323,11 @@ static void power_off(void) {
 #endif
     powered = false;
     k_spin_unlock(&power_lock, key);
+    LOG_DBG("supply off");
 }
 
 static bool show(void) {
-    if (!power_on()) {
+    if (!status_power_on()) {
         return false;
     }
     int err = led_strip_update_rgb(strip, pixels, NUM_LEDS);
@@ -325,10 +337,10 @@ static bool show(void) {
     return true;
 }
 
-static void run(struct request req) {
+static void status_run(struct request req) {
     int64_t start = k_uptime_get();
 
-    LOG_DBG("Status LEDs: display %d for %u ms", req.display, req.duration_ms);
+    LOG_DBG("show %s for %u ms", display_names[req.display], req.duration_ms);
     for (;;) {
         int64_t t = k_uptime_get() - start;
         struct request next;
@@ -346,6 +358,7 @@ static void run(struct request req) {
         if (k_msgq_peek(&request_q, &next) == 0 && next.display == req.display) {
             k_msgq_get(&request_q, &req, K_NO_WAIT);
             start = k_uptime_get();
+            LOG_DBG("restart %s for %u ms", display_names[req.display], req.duration_ms);
         }
     }
 }
@@ -355,10 +368,10 @@ static void status_thread(void *p1, void *p2, void *p3) {
 
     for (;;) {
         k_msgq_get(&request_q, &req, K_FOREVER);
-        run(req);
+        status_run(req);
 
         if (k_msgq_num_used_get(&request_q) == 0) {
-            power_off();
+            status_power_off();
         } else if (powered) {
             clear_leds();
             show();
@@ -389,17 +402,22 @@ void ledstrip_status_show_connection(void) {
 static bool was_usb_powered;
 static bool was_charging;
 
+// re-arm on the opposite level; level interrupts use the port SENSE mechanism,
+// which costs nothing in idle (edge interrupts would hold a GPIOTE channel)
+static void __maybe_unused rearm(const struct gpio_dt_spec *spec) {
+    gpio_pin_interrupt_configure_dt(spec, gpio_pin_get_dt(spec) > 0 ? GPIO_INT_LEVEL_INACTIVE
+                                                                    : GPIO_INT_LEVEL_ACTIVE);
+}
+
 static void charge_work_cb(struct k_work *work) {
     bool usb = usb_powered();
     bool chg = charging();
 
 #if HAS_CHARGE
-    // re-arm on the opposite level; level interrupts use the port SENSE
-    // mechanism, which costs nothing in idle (edge interrupts would hold a
-    // GPIOTE channel)
-    gpio_pin_interrupt_configure_dt(&charge_gpio, gpio_pin_get_dt(&charge_gpio) > 0
-                                                      ? GPIO_INT_LEVEL_INACTIVE
-                                                      : GPIO_INT_LEVEL_ACTIVE);
+    rearm(&charge_gpio);
+#endif
+#if HAS_VBUS
+    rearm(&vbus_gpio);
 #endif
 
     if (initialized) {
@@ -425,6 +443,12 @@ static K_WORK_DELAYABLE_DEFINE(charge_work, charge_work_cb);
 #if HAS_CHARGE
 static void charge_isr(const struct device *port, struct gpio_callback *cb, uint32_t pins) {
     gpio_pin_interrupt_configure_dt(&charge_gpio, GPIO_INT_DISABLE);
+    k_work_reschedule(&charge_work, CHARGE_SETTLE);
+}
+#endif
+#if HAS_VBUS
+static void vbus_isr(const struct device *port, struct gpio_callback *cb, uint32_t pins) {
+    gpio_pin_interrupt_configure_dt(&vbus_gpio, GPIO_INT_DISABLE);
     k_work_reschedule(&charge_work, CHARGE_SETTLE);
 }
 #endif
@@ -469,6 +493,14 @@ static int ledstrip_status_init(void) {
     gpio_init_callback(&charge_cb, charge_isr, BIT(charge_gpio.pin));
     gpio_add_callback_dt(&charge_gpio, &charge_cb);
 #endif
+#if HAS_VBUS
+    if (!gpio_is_ready_dt(&vbus_gpio)) {
+        return -ENODEV;
+    }
+    gpio_pin_configure_dt(&vbus_gpio, GPIO_INPUT);
+    gpio_init_callback(&vbus_cb, vbus_isr, BIT(vbus_gpio.pin));
+    gpio_add_callback_dt(&vbus_gpio, &vbus_cb);
+#endif
 
     k_work_schedule(&boot_work, K_MSEC(CONFIG_LEDSTRIP_STATUS_BOOT_DELAY_MS));
     return 0;
@@ -493,6 +525,7 @@ static int ledstrip_status_listener(const zmk_event_t *eh) {
         k_spin_unlock(&power_lock, key);
         if (suspended) {
             k_msgq_purge(&request_q);
+            LOG_DBG("sleep: supply off");
         }
         return ZMK_EV_EVENT_BUBBLE;
     }

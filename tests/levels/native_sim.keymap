@@ -1,0 +1,17 @@
+#include "../ledstrip_status.dtsi"
+
+/*
+ * Every gauge step on request: 70 % (2.5 LEDs green), 45 % (1.5 yellow),
+ * 25 % (1 amber), 12 % (half red, blinking). Then 5 %, which is below the
+ * critical level, blinks on its own when the battery is next sampled.
+ */
+&kscan {
+    events = <
+        TAP(BAT_70, 4500) TAP(SHOW_BAT, 1500)
+        TAP(BAT_45, 3500) TAP(SHOW_BAT, 1500)
+        TAP(BAT_25, 3500) TAP(SHOW_BAT, 1500)
+        TAP(BAT_12, 3500) TAP(SHOW_BAT, 1500)
+        TAP(BAT_5, 3500)
+        TAP(NOP, 3000)
+    >;
+};

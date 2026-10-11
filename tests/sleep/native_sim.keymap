@@ -1,0 +1,16 @@
+#include "../ledstrip_status.dtsi"
+
+/*
+ * Sleep while the gauge is lit: the supply is cut at once and no frame
+ * follows. Requests while asleep are ignored; after waking they work again.
+ */
+&kscan {
+    events = <
+        TAP(SHOW_BAT, 4500)
+        TAP(SLEEP, 1000)
+        TAP(SHOW_BAT, 1000)
+        TAP(WAKE, 1000)
+        TAP(SHOW_BAT, 500)
+        TAP(NOP, 4000)
+    >;
+};

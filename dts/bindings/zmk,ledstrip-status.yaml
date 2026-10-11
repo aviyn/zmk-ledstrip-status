@@ -24,6 +24,13 @@ properties:
       XIAO nRF52840 this is the BQ25101 CHG output on P0.17, open drain,
       active low: <&gpio0 17 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>.
 
+  vbus-gpios:
+    type: phandle-array
+    description: |
+      USB power (VBUS) sense input, active while USB power is present. Without
+      it, VBUS is read from the nRF52840 USBREGSTATUS register, or from ZMK's
+      USB state on other SoCs.
+
   led-order:
     type: array
     description: |

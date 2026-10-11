@@ -1,0 +1,6 @@
+s/.*test_strip_update_rgb: //p
+s/.*lst_pressed: //p
+s/.*status_power_on: //p
+s/.*status_power_off: //p
+s/.*status_run: //p
+s/.*ledstrip_status_listener: //p
